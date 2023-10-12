@@ -1,0 +1,12 @@
+#include <stdio.h>
+#include <stdlib.h>
+
+//Têmos de criar uma struct para a MIB
+
+
+int main(int argc, char *argv[]) {
+  //Temos de fazer a leitura do ficheiro para tirar as configurações, têmos também de decidir como fica o formato
+
+  
+  return 0;
+}
