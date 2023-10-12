@@ -1,12 +1,75 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
+#define K 10
 //Têmos de criar uma struct para a MIB
+
+
+char* Gen_Chave_Mestra(int tamanho_chave){
+    char chave_formada[tamanho_chave+1];
+
+    for(int i = 0; i < tamanho_chave+1; i ++){
+        chave_formada[i] = (rand() % 9 + 0);
+    }
+
+    return chave_formada;
+}
+
+char* rotate(char* M, int rotation_number){
+    for(int n = 0;n<rotation_number;n++){
+        for (int i = strlen(M) - 1; i > 0; i--) {
+            M[i] = M[i - 1];
+        }
+    }
+    return M;
+}
 
 
 int main(int argc, char *argv[]) {
   //Temos de fazer a leitura do ficheiro para tirar as configurações, têmos também de decidir como fica o formato
+    char Za[K][K];
+    char Zb[K][K];
+    
 
-  
-  return 0;
+    char* Chave_Mestra = Gen_Chave_Mestra(2*K); //Continuamos a devolver como array ou como int?
+    char Chave_MX[2][K];
+    for(int N_chaves = 1;N_chaves!=2;N_chaves++){
+        for(int i = 0;i<K*N_chaves;i++){
+            Chave_MX[N_chaves-1][i] = Chave_Mestra[i]; //Ficamos com os 2 pares de chaves necessários
+        }
+    }
+    
+    //Preenchimento das Matrizes Za & Zb
+    int contador_row = 0;
+    int contador_collumn = 0;
+    
+    //Za -> Filled per Row
+
+    for(int contador_row=0;contador_row < K;contador_row++){
+        for(int contador_collumn=0;contador_collumn < K;contador_collumn++){
+            if(contador_row == 0){
+                Za[contador_row][contador_collumn] = Chave_MX[1][contador_collumn];
+            }else{
+                char* temp_m = rotate(Chave_MX[1],contador_row);
+                Za[contador_row][contador_collumn] = temp_m[contador_collumn];
+            }
+        }
+    }
+    printf("%S\n",Za);
+
+    //Zb -> Filled per Collumn
+    for(int contador_collumn=0;contador_collumn < K;contador_collumn++){
+        for(int contador_row=0;contador_row < K;contador_row++){
+            if(contador_collumn == 0){
+                Zb[contador_row][contador_collumn] = Chave_MX[2][contador_row];
+            }else{
+                char* temp_m2=(Chave_MX[2],contador_row);
+                Zb[contador_row][contador_collumn] = temp_m2[contador_row];
+            }
+        }
+    }
+    printf("%S\n",Zb);
+    
+    return 0;
 }
