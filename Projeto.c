@@ -3,11 +3,12 @@
 #include <time.h>
 #include <string.h>
 
-#define K 10
+#define K 10 //Têm de ser retirado do ficheiro de config depois
+#define Min 0 //Minimo para as funções random, têm de ser retirado do ficheiro em versões posteriores
+#define Max 255 //Máximo para as funções random, o nosso objetivo é obter valores ASCII válidos, dai 255 como máximo, mesma situação do Min
 //Têmos de criar uma struct para a MIB
 
-
-char* Gen_Chave_Mestra(int tamanho_chave){
+unsigned char* Gen_Chave_Mestra(int tamanho_chave){
     int ltime = time(NULL);
     long stime = (unsigned) ltime/2;
     srand(stime);
@@ -22,7 +23,7 @@ char* Gen_Chave_Mestra(int tamanho_chave){
     return chave_formada;
 }
 
-char* rotate(char* M, int rotation_number){
+unsigned char* rotate(char* M, int rotation_number){
     size_t size= strlen(M);
     char* temp_Return = M;
     char temp_array[size];
@@ -46,15 +47,33 @@ char* rotate(char* M, int rotation_number){
     return M;
 }
 
+unsigned char random_char(char seed,int inc, int max){
+    srand(seed);
+    unsigned char Pos_random=(char)('0' + rand() % 255);
+    printf("Pos_random gerado = %d\n",Pos_random);
+    return Pos_random;
+}
 
 int main(int argc, char *argv[]) {
     
   //Temos de fazer a leitura do ficheiro para tirar as configurações, têmos também de decidir como fica o formato
-    char Za[K][K];
-    char Zb[K][K];
+   unsigned char Za[K][K];
+   unsigned char Zb[K][K];
+   unsigned char Zc[K][K];
+   unsigned char Zd[K][K];
     size_t K_T = K;
-    //Za[K][K] = '\0';
-    //Zb[K][K] = '\0';
+
+    
+
+   /*for(int contador_row=0;contador_row != K;contador_row++){
+        for(int contador_collumn=0;contador_collumn != K;contador_collumn++){
+            printf("Teste_NUm:%d",contador_collumn);
+            Za[K][K] = '\0';
+            Zb[K][K] = '\0';
+            Zc[K][K] = '\0';
+            Zd[K][K] = '\0';
+        }
+    }*/ 
 
     char* Chave_Mestra = Gen_Chave_Mestra(2*K); //Continuamos a devolver como array ou como int?
 
@@ -86,7 +105,7 @@ int main(int argc, char *argv[]) {
     //Za -> Filled per Row
 
     for(int contador_row=0;contador_row < K;contador_row++){
-        char* temp_m = rotate(Chave_MX[0],contador_row);
+        unsigned char* temp_m = rotate(Chave_MX[0],contador_row);
         for(int contador_collumn=0;contador_collumn < K;contador_collumn++){
             if(contador_row == 0){
                 Za[contador_row][contador_collumn] = Chave_MX[0][contador_collumn];
@@ -99,17 +118,28 @@ int main(int argc, char *argv[]) {
     
     //Zb -> Filled per Collumn
     for(int contador_collumn=0;contador_collumn < K;contador_collumn++){
+        unsigned char* temp_m2=rotate(Chave_MX[2],contador_collumn);
         for(int contador_row=0;contador_row < K;contador_row++){
             if(contador_collumn == 0){
                 Zb[contador_row][contador_collumn] = Chave_MX[2][contador_row];
             }else{
-                char* temp_m2=rotate(Chave_MX[2],contador_row);
                 Zb[contador_row][contador_collumn] = temp_m2[contador_row];
             }
         }
     }
-    printf("%s\n",Zb[0]);
-    
+
+    //Zc -> Filled by random numbers generated trough the random() function.
+
+    for(int contador_row=0;contador_row < K;contador_row++){
+        for(int contador_collumn=0;contador_collumn < K;contador_collumn++){
+            printf("Chamadas Random:%d\n",contador_collumn);
+            Zc[contador_row][contador_collumn] = random_char(Za[contador_row][contador_collumn],Min,Max); //Estamos a ficar com chars a mais no array
+        }
+        printf("Iterações:%d\n",contador_row);
+        printf("%s\n",Zc[contador_row]);
+        printf("Tamanho_array: %d",sizeof(Zc[contador_row]));
+    }
+    //Zd -> Filled by
 
     return 0;
 }
