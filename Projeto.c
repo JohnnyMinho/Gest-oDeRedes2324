@@ -48,6 +48,8 @@ unsigned char* rotate(char* M, int rotation_number){
 }
 
 unsigned char random_char(char seed,int inc, int max){
+    //Assumi que este era o caso uso da seed visto que não estava a ver outra maneira de isto ser feito
+    //E na net este foi o exemplo mais frequente que encontrei
     srand(seed);
     unsigned char Pos_random=(char)('0' + rand() % 255);
     printf("Pos_random gerado = %d\n",Pos_random);
@@ -128,18 +130,20 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    //Zc -> Filled by random numbers generated trough the random() function.
+    //Zc & Zd -> Filled by random char generated trough the random() function, this random char is calculated from a random number with the original Za or Zb character
+    //Of the current position in the matrix as a seed.
 
     for(int contador_row=0;contador_row < K;contador_row++){
         for(int contador_collumn=0;contador_collumn < K;contador_collumn++){
             printf("Chamadas Random:%d\n",contador_collumn);
             Zc[contador_row][contador_collumn] = random_char(Za[contador_row][contador_collumn],Min,Max); //Estamos a ficar com chars a mais no array
+            Zd[contador_row][contador_collumn] = random_char(Zb[contador_row][contador_collumn],Min,Max);
         }
         printf("Iterações:%d\n",contador_row);
         printf("%s\n",Zc[contador_row]);
         printf("Tamanho_array: %d",sizeof(Zc[contador_row]));
     }
-    //Zd -> Filled by
+
 
     return 0;
 }
