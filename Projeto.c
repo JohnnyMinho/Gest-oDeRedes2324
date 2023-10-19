@@ -25,7 +25,8 @@ unsigned char* Gen_Chave_Mestra(int tamanho_chave){
 
 unsigned char* rotate(char* M, int rotation_number){
     size_t size= strlen(M);
-    char* temp_Return = M;
+    char* temp_Return = (char*)malloc(size+1);
+    memmove(temp_Return,M,size);
     char temp_array[size];
     temp_array[size] = '\0';
     //printf("Rotation:%d",rotation_number);
@@ -44,12 +45,13 @@ unsigned char* rotate(char* M, int rotation_number){
   // Copy the rotated array from the temporary array back to the original array.
     memmove(temp_Return, temp_array, size);
     //printf("M: %s\n",M);
-    return M;
+    return temp_Return;
 }
 
-unsigned char xor(char *Za,char *Zb, char *Zc,char *Zd){
-    
-    return -1;
+unsigned char xor(unsigned char Za,unsigned char Zb,unsigned char Zc,unsigned char Zd){
+    printf("Za:%c,Zb:%c,Zc:%c,Zd:%c",Za,Zb,Zc,Zd);
+    unsigned char value_to_return = Za^Zb^Zc^Zd; 
+    return value_to_return;
 }
 
 unsigned char random_char(char seed,int inc, int max){
@@ -57,37 +59,40 @@ unsigned char random_char(char seed,int inc, int max){
     //E na net este foi o exemplo mais frequente que encontrei
     srand(seed);
     unsigned char Pos_random=(char)('0' + rand() % 255);
-    printf("Pos_random gerado = %d\n",Pos_random);
+    //printf("Pos_random gerado = %d\n",Pos_random);
     return Pos_random;
 }
 
 int main(int argc, char *argv[]) {
     
   //Temos de fazer a leitura do ficheiro para tirar as configurações, têmos também de decidir como fica o formato
-   unsigned char Za[K][K];
-   unsigned char Zb[K][K];
-   unsigned char Zc[K][K];
-   unsigned char Zd[K][K];
-    size_t K_T = K;
+    size_t K_T = K; //Ao que parece se for realizada qualquer operação sobre um valor do #define o mesmo fica alterado permanentemente
+    unsigned char Za[K_T][K_T];
+    unsigned char Zb[K_T][K_T];
+    unsigned char Zc[K_T][K_T];
+    unsigned char Zd[K_T][K_T];
+    unsigned char Z[K_T][K_T];
+    
 
     
 
-   /*for(int contador_row=0;contador_row != K;contador_row++){
-        for(int contador_collumn=0;contador_collumn != K;contador_collumn++){
-            printf("Teste_NUm:%d",contador_collumn);
-            Za[K][K] = '\0';
-            Zb[K][K] = '\0';
-            Zc[K][K] = '\0';
-            Zd[K][K] = '\0';
+   for(int contador_row=0;contador_row != K_T;contador_row++){
+        for(int contador_collumn=0;contador_collumn != K_T;contador_collumn++){
+            //printf("Teste_NUm:%d",contador_collumn);
+            Za[contador_row][contador_collumn] = '\0';
+            Zb[contador_row][contador_collumn] = '\0';
+            Zc[contador_row][contador_collumn] = '\0';
+            Zd[contador_row][contador_collumn] = '\0';
+            Z[contador_row][contador_collumn] = '\0';
         }
-    }*/ 
+    }
 
-    char* Chave_Mestra = Gen_Chave_Mestra(2*K); //Continuamos a devolver como array ou como int?
+    unsigned char* Chave_Mestra = Gen_Chave_Mestra(2*K_T); //Continuamos a devolver como array ou como int?
 
-    char Chave_MX[2][K];
-    Chave_MX[0][K] = '\0';
-    Chave_MX[1][K] = '\0';
-    Chave_MX[2][K] = '\0';
+    unsigned char Chave_M1[K_T];
+    unsigned char Chave_M2[K_T];
+    Chave_M1[K_T] = '\0';
+    Chave_M2[K_T] = '\0';
     /*for(int N_chaves = 0;N_chaves<2;N_chaves++){
         printf("N_chaves:%d\n",N_chaves);
         if(N_chaves == 0){
@@ -96,15 +101,12 @@ int main(int argc, char *argv[]) {
             memmove(Chave_MX[N_chaves],Chave_Mestra+((N_chaves)*K),K*sizeof(char)); //Ficamos com os 2 pares de chaves necessários
         }
     }*/
-    for(int N_chaves = 0;N_chaves<2;N_chaves++){
-        for(int i = 0 +(10*N_chaves);i<(10+(10*N_chaves));i++){
-            Chave_MX[N_chaves][i] = Chave_Mestra[i];
-        }
-    }
-    printf("K:%d",K);
+    memcpy(Chave_M1,Chave_Mestra,10);
+    memcpy(Chave_M2,Chave_Mestra+10,10);
+    printf("K:%d\n",K);
     printf("Chave_Mestra:%s\n",Chave_Mestra);
-    printf("teste:%s\n",Chave_MX[0]);
-    printf("teste:%s\n",Chave_MX[2]);
+    printf("teste:%s\n",Chave_M1);
+    printf("teste:%s\n",Chave_M2);
     //Preenchimento das Matrizes Za & Zb
     int contador_row = 0;
     int contador_collumn = 0;
@@ -112,27 +114,39 @@ int main(int argc, char *argv[]) {
     //Za -> Filled per Row
 
     for(int contador_row=0;contador_row < K;contador_row++){
-        unsigned char* temp_m = rotate(Chave_MX[0],contador_row);
+        char temp_m[K_T];
+        temp_m[K_T] = '\0';
+        memmove(temp_m,Chave_M1,sizeof(temp_m));
+        char *rotated_array = rotate(temp_m,contador_row);
+        //printf("Testes alt ChaveM: %s\n", Chave_M1);
+        //printf("Pre_error_Hello\n");
+        //printf("Teste out_of_bounds:%c\n", Chave_M1[15]);
+        //printf("Hello\n");
         for(int contador_collumn=0;contador_collumn < K;contador_collumn++){
             if(contador_row == 0){
-                Za[contador_row][contador_collumn] = Chave_MX[0][contador_collumn];
+                Za[contador_row][contador_collumn] = Chave_M1[contador_collumn];
             }else{
-                Za[contador_row][contador_collumn] = temp_m[contador_collumn];
+                Za[contador_row][contador_collumn] = rotated_array[contador_collumn];
             }
         }
-        printf("%s\n",Za[contador_row]);
+        //printf("%s\n",Za[contador_row]);
     }
     
     //Zb -> Filled per Collumn
     for(int contador_collumn=0;contador_collumn < K;contador_collumn++){
-        unsigned char* temp_m2=rotate(Chave_MX[2],contador_collumn);
+        char temp_m2[K_T];
+        temp_m2[K_T] = '\0';
+        memmove(temp_m2,Chave_M2,sizeof(temp_m2));
+        char *rotated_array2 = rotate(temp_m2,contador_collumn);
+        //printf("Collumn Rotation:%s\n",rotated_array2);
         for(int contador_row=0;contador_row < K;contador_row++){
             if(contador_collumn == 0){
-                Zb[contador_row][contador_collumn] = Chave_MX[2][contador_row];
+                Zb[contador_row][contador_collumn] = Chave_M2[contador_row];
             }else{
-                Zb[contador_row][contador_collumn] = temp_m2[contador_row];
+                Zb[contador_row][contador_collumn] = rotated_array2[contador_row];
             }
         }
+        //printf("%s\n",Zb[contador_collumn]);
     }
 
     //Zc & Zd -> Filled by random char generated trough the random() function, this random char is calculated from a random number with the original Za or Zb character
@@ -140,13 +154,31 @@ int main(int argc, char *argv[]) {
 
     for(int contador_row=0;contador_row < K;contador_row++){
         for(int contador_collumn=0;contador_collumn < K;contador_collumn++){
-            printf("Chamadas Random:%d\n",contador_collumn);
+            //printf("Chamadas Random:%d\n",contador_collumn);
             Zc[contador_row][contador_collumn] = random_char(Za[contador_row][contador_collumn],Min,Max); //Estamos a ficar com chars a mais no array
             Zd[contador_row][contador_collumn] = random_char(Zb[contador_row][contador_collumn],Min,Max);
         }
-        printf("Iterações:%d\n",contador_row);
+        /*printf("Iterações:%d\n",contador_row);
         printf("%s\n",Zc[contador_row]);
-        printf("Tamanho_array: %d",sizeof(Zc[contador_row]));
+        printf("Tamanho_array: %d\n",sizeof(Zc[contador_row]));
+        printf("D:%s\n",Zd[contador_row]);
+        printf("Tamanho_arrayD: %d",sizeof(Zd[contador_row]));*/
+    }
+
+    //Z matrix -> Filled by xored elements from all the previous Matrixes. 
+    for(int contador_row=0;contador_row < K;contador_row++){
+        for(int contador_collumn=0;contador_collumn < K;contador_collumn++){
+            printf("Iteração: %d",contador_row);
+            unsigned char temp = xor(*Za[contador_row,contador_collumn],
+            *Zb[contador_row,contador_collumn],
+            *Zc[contador_row,contador_collumn],
+            *Zd[contador_row,contador_collumn]);
+            Z[contador_row][contador_collumn] = temp;
+            printf("Z gerado: %c\n",Z[contador_row][contador_collumn]);
+        }
+        //printf("Iterações:%d\n",contador_row);
+        //printf("%s\n",Zc[contador_row]);
+        //printf("Tamanho_array: %d",sizeof(Zc[contador_row]));
     }
 
 
