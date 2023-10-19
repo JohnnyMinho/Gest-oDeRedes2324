@@ -47,6 +47,11 @@ unsigned char* rotate(char* M, int rotation_number){
     return M;
 }
 
+unsigned char xor(char *Za,char *Zb, char *Zc,char *Zd){
+    
+    return -1;
+}
+
 unsigned char random_char(char seed,int inc, int max){
     //Assumi que este era o caso uso da seed visto que não estava a ver outra maneira de isto ser feito
     //E na net este foi o exemplo mais frequente que encontrei
