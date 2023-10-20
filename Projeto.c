@@ -2,10 +2,14 @@
 #include <stdlib.h>
 #include <time.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <fcntl.h>
 
 #define K 10 //Têm de ser retirado do ficheiro de config depois
-#define Min 0 //Minimo para as funções random, têm de ser retirado do ficheiro em versões posteriores
-#define Max 255 //Máximo para as funções random, o nosso objetivo é obter valores ASCII válidos, dai 255 como máximo, mesma situação do Min
+//#define Min 0 //Minimo para as funções random, têm de ser retirado do ficheiro em versões posteriores
+//#define Max 255 //Máximo para as funções random, o nosso objetivo é obter valores ASCII válidos, dai 255 como máximo, mesma situação do Min
 //Têmos de criar uma struct para a MIB
 
 unsigned char* Gen_Chave_Mestra(int tamanho_chave){
@@ -78,33 +82,65 @@ unsigned random_charZ(unsigned char seed,int inc, int max){
 }
 
 unsigned char* rotateZ(unsigned char* M, int rotation_number) {
-    printf("Tagala");
     size_t size = sizeof(M) / sizeof(M[0]);
-    printf("Tagala");
     unsigned char* temp_Return = (unsigned char*)malloc(size + 1);
-    printf("Tagala");
     memmove(temp_Return, M, size);
-    printf("Tagala");
     unsigned char temp_array[size];
-    printf("Tagala");
     temp_array[size] = '\0';
     // Copy the last n elements of the original array to the temporary array.
     memmove(temp_array, temp_Return + size - rotation_number, rotation_number * sizeof(char));
-    printf("Tagala");
     // Copy the remaining elements of the original array to the temporary array.
     memmove(temp_array + rotation_number, temp_Return, size - rotation_number * sizeof(char));
-    printf("Tagala");
     // Copy the rotated array from the temporary array back to the original array.
     memmove(temp_Return, temp_array, size);
-    printf("Tagala");
 
     return temp_Return;
 }
 
 int main(int argc, char *argv[]) {
+
+    //Ficheiro de Configuração, Campos:
+    //-> Porta UDP usada, Adresso servidor, Adresso Cliente , Tamanho de K, Min e Max caracteres possíveis para a função random,
+    //-> De quantos em quantos segundos as tabelas são atualizadas
+    int config_fd = 0;
+    int Port_Server = 0;
+    char Ip_Address[15];
+    size_t K_T = K; //Ao que parece se for realizada qualquer operação sobre um valor do #define o mesmo fica alterado permanentemente
+    int Min = 0;
+    int Max = 255;
+    int T = 0; //Intervalo de tempo entre atualizações
+    int Start_up_time = 0; //Tempo desde o início do programa
+    if(argc<2){ //Abertura de ficheiro default
+        config_fd = open("config_SNMPKeys.txt", O_RDONLY);
+    }else{ //Abertura de um ficheiro custom, se quisermos usar isto têmos de defenir um plano que deve ser seguido para que a leitura do ficheiro seja sempre respeitada
+        config_fd = open(argv[1],O_RDONLY);
+    }
+    
+    if(config_fd == -1){
+        perror("Erro relacionado com o ficheiro de conversão");
+        return -1;
+    }
+    
+    char buffer[1024];
+    int n = 0;
+
+    while((n=read(config_fd,buffer,sizeof(buffer)))>0){ //Continua a haver coisas a ler no ficheiro de config
+        int contador = 0;
+        char *token = strtok(buffer,",");
+        Port_Server = atoi(token[0]);
+        memcpy(Ip_Address,token[1],strlen(token[1]));
+        K_T = atoi(token[2]);
+        Min = atoi(token[3]);
+        Max = atoi(token[4]);
+        T = atoi(token[5]);
+    }
+
+    close(config_fd);
+
+    //Inicilização do Servidor
     
   //Temos de fazer a leitura do ficheiro para tirar as configurações, têmos também de decidir como fica o formato
-    size_t K_T = K; //Ao que parece se for realizada qualquer operação sobre um valor do #define o mesmo fica alterado permanentemente
+    
     unsigned char Za[K_T][K_T];
     unsigned char Zb[K_T][K_T];
     unsigned char Zc[K_T][K_T];
