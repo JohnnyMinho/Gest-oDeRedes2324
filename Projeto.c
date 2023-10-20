@@ -4,6 +4,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <unistd.h>
 #include <fcntl.h>
 
@@ -11,6 +12,8 @@
 //#define Min 0 //Minimo para as funções random, têm de ser retirado do ficheiro em versões posteriores
 //#define Max 255 //Máximo para as funções random, o nosso objetivo é obter valores ASCII válidos, dai 255 como máximo, mesma situação do Min
 //Têmos de criar uma struct para a MIB
+
+
 
 unsigned char* Gen_Chave_Mestra(int tamanho_chave){
     int ltime = time(NULL);
@@ -64,25 +67,25 @@ unsigned char random_char(char seed,int inc, int max){
     //E na net este foi o exemplo mais frequente que encontrei
     srand(seed);
     unsigned char Pos_random=(char)((char) inc + rand() % max);
-    printf("Seed usada:%c",seed);
+    //printf("Seed usada:%c",seed);
     //printf("Valor random obtido: %c\n",Pos_random);
     //printf("Pos_random gerado = %d\n",Pos_random);
     return Pos_random;
 }
 
-unsigned random_charZ(unsigned char seed,int inc, int max){
+unsigned char* random_charZ(unsigned char seed,int inc, int max){
     //Assumi que este era o caso uso da seed visto que não estava a ver outra maneira de isto ser feito
     //E na net este foi o exemplo mais frequente que encontrei
     srand(seed);
     unsigned char Pos_random=(char)((char) inc + rand() % max);
-    printf("Seed usada:%c",seed);
+    //printf("Seed usada:%c",seed);
     //printf("Valor random obtido: %c\n",Pos_random);
     //printf("Pos_random gerado = %d\n",Pos_random);
     return Pos_random;
 }
 
 unsigned char* rotateZ(unsigned char* M, int rotation_number) {
-    size_t size = sizeof(M) / sizeof(M[0]);
+    size_t size = sizeof(M) / sizeof(M[0]); //Number of bytes / Numero de caracteres 
     unsigned char* temp_Return = (unsigned char*)malloc(size + 1);
     memmove(temp_Return, M, size);
     unsigned char temp_array[size];
@@ -98,18 +101,25 @@ unsigned char* rotateZ(unsigned char* M, int rotation_number) {
 }
 
 int main(int argc, char *argv[]) {
+    //Tempo retirado com a inicilização do programa (Time_Since_Initiliazed)
+    struct timeval tv;
+    gettimeofday(&tv,NULL);
+    int Time_Initilized_sec = tv.tv_sec; // seconds
+    long int Time_Initilized_microsec = tv.tv_usec; // microseconds
 
     //Ficheiro de Configuração, Campos:
     //-> Porta UDP usada, Adresso servidor, Adresso Cliente , Tamanho de K, Min e Max caracteres possíveis para a função random,
     //-> De quantos em quantos segundos as tabelas são atualizadas
     int config_fd = 0;
     int Port_Server = 0;
-    char Ip_Address[15];
+    char Ip_Address_temp[15];
+    memset(Ip_Address_temp,'\0',sizeof(Ip_Address_temp));
     size_t K_T = K; //Ao que parece se for realizada qualquer operação sobre um valor do #define o mesmo fica alterado permanentemente
     int Min = 0;
     int Max = 255;
     int T = 0; //Intervalo de tempo entre atualizações
     int Start_up_time = 0; //Tempo desde o início do programa
+
     if(argc<2){ //Abertura de ficheiro default
         config_fd = open("config_SNMPKeys.txt", O_RDONLY);
     }else{ //Abertura de um ficheiro custom, se quisermos usar isto têmos de defenir um plano que deve ser seguido para que a leitura do ficheiro seja sempre respeitada
@@ -124,16 +134,44 @@ int main(int argc, char *argv[]) {
     char buffer[1024];
     int n = 0;
 
+
     while((n=read(config_fd,buffer,sizeof(buffer)))>0){ //Continua a haver coisas a ler no ficheiro de config
         int contador = 0;
+        char *temp_ptr;
         char *token = strtok(buffer,",");
-        Port_Server = atoi(token[0]);
-        memcpy(Ip_Address,token[1],strlen(token[1]));
-        K_T = atoi(token[2]);
-        Min = atoi(token[3]);
-        Max = atoi(token[4]);
-        T = atoi(token[5]);
+        while(token != NULL){
+        switch (contador)
+        {
+        case 0:
+            Port_Server = atoi(token);
+            break;
+        case 1:
+            memcpy(Ip_Address_temp,token,strlen(token));
+            break;
+        case 2:
+            K_T = atoi(token);
+            break;
+        case 3:
+            Min = atoi(token);
+            break;
+        case 4:
+            Max = atoi(token);
+            break;
+        case 5:
+            T = atoi(token);  
+            break;
+        default:
+            break;
+        }
+        token = strtok(NULL,",");
+        contador++;
+        }
     }
+    
+    //Tratamento extra ligado ao endereço Ip.
+    char Ip_Address[strlen(Ip_Address_temp)+1];
+    memmove(Ip_Address,Ip_Address_temp,sizeof(Ip_Address));
+    Ip_Address[strlen(Ip_Address_temp)+1] == '\0';  
 
     close(config_fd);
 
@@ -147,9 +185,6 @@ int main(int argc, char *argv[]) {
     unsigned char Zd[K_T][K_T];
     unsigned char Z[K_T][K_T];
     
-
-    
-
    for(int contador_row=0;contador_row != K_T;contador_row++){
         for(int contador_collumn=0;contador_collumn != K_T;contador_collumn++){
             //printf("Teste_NUm:%d",contador_collumn);
@@ -225,6 +260,7 @@ int main(int argc, char *argv[]) {
     for(int contador_row=0;contador_row < K;contador_row++){
         for(int contador_collumn=0;contador_collumn < K;contador_collumn++){
             //printf("Chamadas Random:%d\n",contador_collumn);
+            
             Zc[contador_row][contador_collumn] = random_char(Za[contador_row][contador_collumn],Min,Max); //Estamos a ficar com chars a mais no array
             Zd[contador_row][contador_collumn] = random_char(Zb[contador_row][contador_collumn],Min,Max);
         }
@@ -255,12 +291,10 @@ int main(int argc, char *argv[]) {
         int rotation_number = random_char(Z[contador_row][0], 0, K_T - 1);
         printf("rotaiton_number: %d\n", rotation_number);
         unsigned char* temp_row = rotateZ(Z[contador_row], rotation_number);
-        printf("Tagala2");
         //  printf("here\n");
         for (int contador_collumn = 0; contador_collumn < K_T; contador_collumn++) {
             Z[contador_row][contador_collumn] = temp_row[contador_collumn];
         }
-        printf("Tagala2");
     }
 
     for (int contador_column = 0; contador_column < K_T; contador_column++) {
