@@ -19,7 +19,6 @@
 typedef int IntegerOid; //Para existir a aproximação máxima à escrita de uma MIB definimos estas variáveis.
 typedef char *OctetStringOid;
 
-
 /*Não mexer mais nesta parte até termos o protrocolo de tratamento de requests definindo
 typedef struct {
   IntegerOid oid;
@@ -46,6 +45,12 @@ typedef struct{
     int T; //Tempo entre atualizações
 } dados_KeyAgent;
 
+typedef struct{
+    unsigned long IP_add;
+    unsigned short port;
+} dados_CommAgent;
+
+
 unsigned char* Gen_Chave_Mestra(int tamanho_chave){
     int ltime = time(NULL);
     long stime = (unsigned) ltime/2;
@@ -55,7 +60,6 @@ unsigned char* Gen_Chave_Mestra(int tamanho_chave){
 
     for(int i = 0; i < tamanho_chave; i ++){
         chave_formada[i]=(char)('0' + rand() % 10);
-        //printf("Chave:%c\n",chave_formada[i]);
     }
     return chave_formada;
 }
@@ -67,27 +71,15 @@ unsigned char* rotate(char* M, int rotation_number){
     memmove(temp_Return,M,size);
     char temp_array[size];
     temp_array[size] = '\0';
-    //printf("Rotation:%d",rotation_number);
-    //printf("Chave_M:%s\n",temp_Return);
-    /*for(int n = 0;n<rotation_number;n++){
-        for (int i = strlen(M) - 1; i > 0; i--) {
-            M[i] = M[i - 1];
-        }
-    }*/
-     // Copy the last `n` elements of the original array to the temporary array.
+
+    //É optado o uso do memmove para evitar overflows.
     memmove(temp_array, temp_Return + size - rotation_number, rotation_number*sizeof(char));
-
-  // Copy the remaining elements of the original array to the temporary array.
     memmove(temp_array + rotation_number, temp_Return, size - rotation_number*sizeof(char));
-
-  // Copy the rotated array from the temporary array back to the original array.
     memmove(temp_Return, temp_array, size);
-    //printf("M: %s\n",M);
     return temp_Return;
 }
 
 unsigned char xor(char Za,char Zb,unsigned char Zc,unsigned char Zd){
-    //printf("Za:%c,Zb:%c,Zc:%c,Zd:%c",Za,Zb,Zc,Zd);
     unsigned char value_to_return = (Za^ Zb ^ Zc ^ Zd); 
     return value_to_return;
 }
@@ -97,9 +89,6 @@ unsigned char random_char(char seed,int inc, int max){
     //E na net este foi o exemplo mais frequente que encontrei
     srand(seed);
     unsigned char Pos_random=(char)((char) inc + rand() % max);
-    //printf("Seed usada:%c",seed);
-    //printf("Valor random obtido: %c\n",Pos_random);
-    //printf("Pos_random gerado = %d\n",Pos_random);
     return Pos_random;
 }
 
@@ -108,9 +97,6 @@ unsigned char* random_charZ(unsigned char seed,int inc, int max){
     //E na net este foi o exemplo mais frequente que encontrei
     srand(seed);
     unsigned char Pos_random=(char)((char) inc + rand() % max);
-    //printf("Seed usada:%c",seed);
-    //printf("Valor random obtido: %c\n",Pos_random);
-    //printf("Pos_random gerado = %d\n",Pos_random);
     return Pos_random;
 }
 
@@ -120,11 +106,8 @@ unsigned char* rotateZ(unsigned char* M, int rotation_number) {
     memmove(temp_Return, M, size);
     unsigned char temp_array[size];
     temp_array[size] = '\0';
-    // Copy the last n elements of the original array to the temporary array.
     memmove(temp_array, temp_Return + size - rotation_number, rotation_number * sizeof(char));
-    // Copy the remaining elements of the original array to the temporary array.
     memmove(temp_array + rotation_number, temp_Return, size - rotation_number * sizeof(char));
-    // Copy the rotated array from the temporary array back to the original array.
     memmove(temp_Return, temp_array, size);
 
     return temp_Return;
@@ -132,7 +115,48 @@ unsigned char* rotateZ(unsigned char* M, int rotation_number) {
 
 //Definição das funções para a threads.
 
-void KeyAgent(void *arg){
+//No server usamos a solução sugerida pelo professor que é o uso de um ficheiro com o número de pedidos total
+
+void *CommAgent(void *arg){
+
+    int Udp_Server_Socket_fd = (AF_INET, SOCK_DGRAM, 0); //Descriptor da socket UDP, AF_INET especifica que vai trabalhar sobre IpV4
+    dados_CommAgent *dados = (dados_CommAgent *)arg;
+    char server_message[2000], client_message[2000];
+    struct sockaddr_in server; //Esta socket é mais por questões de facilitar a vida ao usar o inet
+    char buffer_numpedidos[11];
+    buffer_numpedidos[11] = '\0';
+
+    int fd_rqfile = open("Num_Requests.txt",O_RDWR|O_CREAT|O_TRUNC,0666);
+    read(fd_rqfile,buffer_numpedidos,sizeof(buffer_numpedidos)); //Podiamos optar por uma solução mais bonita a partir do fstat
+
+    int  num_pedidos = atoi(buffer_numpedidos); 
+
+    server.sin_family = AF_INET;
+    server.sin_addr.s_addr = dados->IP_add;
+    server.sin_port = dados->port;
+
+    if(Udp_Server_Socket_fd < 0){
+        printf("UDP socket creation wasn't possible, shutting down!");
+        exit(-1); //Podemos trocar por um exit;
+    } //Erro na Criação
+
+    //Basicamente dizer que a socket passa a ter estas propriedades
+    if(bind(Udp_Server_Socket_fd, (struct sockaddr*)&server, sizeof(server)) < 0){
+        printf("Couldn't bind to the port\n");
+        exit(-2);
+    }
+
+    //Verificamos se a socket ficou atribuída
+    socklen_t len_nome_server = sizeof(server);
+    
+    if(getsockname(Udp_Server_Socket_fd,&server,len_nome_server)){
+        printf("Port failed to be trully attributed to the specified parameters");
+        exit(-3);
+    }
+
+}
+
+void *KeyAgent(void *arg){
 
     dados_KeyAgent *dados = (dados_KeyAgent *)arg;
     int K_T = dados->K_T;
@@ -173,7 +197,6 @@ void KeyAgent(void *arg){
     int contador_collumn = 0;
     
     //Za -> Filled per Row
-
     for(int contador_row=0;contador_row < K;contador_row++){
         char temp_m[K_T];
         temp_m[K_T] = '\0';
@@ -206,7 +229,6 @@ void KeyAgent(void *arg){
 
     //Zc & Zd -> Filled by random char generated trough the random() function, this random char is calculated from a random number with the original Za or Zb character
     //Of the current position in the matrix as a seed.
-
     for(int contador_row=0;contador_row < K;contador_row++){
         for(int contador_collumn=0;contador_collumn < K;contador_collumn++){
             Zc[contador_row][contador_collumn] = random_char(Za[contador_row][contador_collumn],Min,Max); //Estamos a ficar com chars a mais no array
@@ -230,16 +252,19 @@ void KeyAgent(void *arg){
 
     //Obtenção do tempo
     struct timeval tv;
+    gettimeofday(&tv, NULL);
     int Time_Initilized_sec = tv.tv_sec;
     int N_atualizados = 0; //Número de atualizações da tabela
+    printf("Tempo:%d\n",Time_Initilized_sec);
     // -----------------
     while(1){
-        if(tv.tv_sec-Time_Initilized_sec>30){
+        gettimeofday(&tv, NULL);
+        if(tv.tv_sec-Time_Initilized_sec>6){
             // Process and update Z matrix
             // Rotate each row a random number
             for (int contador_row = 0; contador_row < K_T; contador_row++) {
                 int rotation_number = random_char(Z[contador_row][0], 0, K_T - 1);
-                printf("rotaiton_number: %d\n", rotation_number);
+                printf("rotation_number: %d\n", rotation_number);
                 unsigned char* temp_row = rotateZ(Z[contador_row], rotation_number);
                 for (int contador_collumn = 0; contador_collumn < K_T; contador_collumn++) {
                     Z[contador_row][contador_collumn] = temp_row[contador_collumn];
@@ -254,22 +279,24 @@ void KeyAgent(void *arg){
                 }
 
                 unsigned char* temp_row = rotateZ(column, rotation_number);
-                //   printf("here\n");
                 for (int contador_row = 0; contador_row < K_T; contador_row++) {
                     Z[contador_row][contador_column] = temp_row[contador_row];
                 }
             }
+            Time_Initilized_sec = tv.tv_sec;
         }
     }
 }
 
 int main(int argc, char *argv[]) {
-
     //Identificadores para cada Thread
     pthread_t KeyAgent_ID;
     pthread_t CommManager_ID;
     pthread_t ProtocolMod_ID;
     //--------------------------------
+
+    //Guardar dados do servidor para enviar como argumento
+    dados_CommAgent args_commagent;
     
     //Tempo retirado com a inicilização do programa (Time_Since_Initiliaze)
     struct timeval tv;
@@ -346,9 +373,10 @@ int main(int argc, char *argv[]) {
     close(config_fd);
     //---------------------------------------------------------------------
 
-    //Inicilização do Servidor
-
-    int Udp_Server_Socket_fd = (AF_INET, SOCK_DGRAM, 0); //Descriptor da socket UDP, AF_INET especifica que vai trabalhar sobre IpV4
+    //Inicilização do Servidor & Definição dos argumentos
+    args_commagent.port = htons(Port_Server);
+    args_commagent.IP_add = inet_addr(Ip_Address);
+    
     //-------------------------
 
     //Inicialização keyAgent e Struct para passagem de argumentos
@@ -356,7 +384,17 @@ int main(int argc, char *argv[]) {
     args_keyagent.K_T = K_T;
     args_keyagent.T = T;
 
-    pthread_create(KeyAgent_ID,NULL,KeyAgent,&args_keyagent);
+    char buffer_numpedidos[11];
+    buffer_numpedidos[11] = '\0';
+
+    int fd_rqfile = open("Num_Requests.txt",O_RDWR|O_CREAT|O_TRUNC,0666);
+    read(fd_rqfile,buffer_numpedidos,sizeof(buffer_numpedidos)); //Podiamos optar por uma solução mais bonita a partir do fstat
+
+    int num_pedidos = atoi(buffer_numpedidos); 
+
+    pthread_create(&KeyAgent_ID,NULL,KeyAgent,&args_keyagent);
+    pthread_create(&CommManager_ID,NULL,CommAgent,&args_commagent);
+    pthread_join(KeyAgent_ID, NULL);
 
     return 0;
 }
