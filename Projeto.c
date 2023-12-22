@@ -12,6 +12,7 @@
 #include <sys/types.h>
 #include <time.h>
 #include <unistd.h>
+#include "Dependencies/hashmap.c/hashmap.h"
 
 #define TIMEOUT_BIND 5
 #define K 10  // Têm de ser retirado do ficheiro de config depois
@@ -22,7 +23,6 @@
 typedef int IntegerOid;  // Para existir a aproximação máxima à escrita de uma MIB definimos estas variáveis.
 typedef char *OctetStringOid;
 
-/*Não mexer mais nesta parte até termos o protrocolo de tratamento de requests definindo
 typedef struct {
   IntegerOid oid;
   char *name;
@@ -30,6 +30,7 @@ typedef struct {
   int maxAccess;
   int status;
   char *description;
+  char *value; //Guardamos o valor em char já que este equivale a um byte em C e é a maneira mais facil de guardar os valores recebidos
 } ObjectType;
 
 // Struct para a Tabela
@@ -41,7 +42,10 @@ typedef struct {
   IntegerOid keyExpirationTime;
   IntegerOid keyVisibility;
 } DataTableGeneratedKeysEntry;
-*/
+
+typedef struct{
+    struct hashmap *Mib;
+} dados_MibAgent;
 
 typedef struct {
     int K_T;  // Basicamente K
@@ -117,6 +121,10 @@ unsigned char *rotateZ(unsigned char *M, int rotation_number) {
 // Definição das funções para a threads.
 
 // No server usamos a solução sugerida pelo professor que é o uso de um ficheiro com o número de pedidos total
+
+void *ProtoclAgent(void *arg){
+    
+}
 
 void *CommAgent(void *arg) {
     printf("CommAgent Started\n");
