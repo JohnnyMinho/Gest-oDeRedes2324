@@ -20,6 +20,12 @@
 // #define Max 255 //Máximo para as funções random, o nosso objetivo é obter valores ASCII válidos, dai 255 como máximo, mesma situação do Min
 // Têmos de criar uma struct para a MIB
 
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t cond1 = PTHREAD_COND_INITIALIZER;
+pthread_cond_t cond2 = PTHREAD_COND_INITIALIZER;
+pthread_cond_t cond3 = PTHREAD_COND_INITIALIZER;
+
+
 typedef int IntegerOid;  // Para existir a aproximação máxima à escrita de uma MIB definimos estas variáveis.
 typedef char *OctetStringOid;
 
@@ -50,6 +56,7 @@ typedef struct{
 typedef struct {
     int K_T;  // Basicamente K
     int T;    // Tempo entre atualizações
+    unsigned char *Z_S;
 } dados_KeyAgent;
 
 typedef struct {
@@ -122,7 +129,7 @@ unsigned char *rotateZ(unsigned char *M, int rotation_number) {
 
 // No server usamos a solução sugerida pelo professor que é o uso de um ficheiro com o número de pedidos total
 
-void *ProtoclAgent(void *arg){
+void *ProtocolAgent(void *arg){
     
 }
 
@@ -273,6 +280,7 @@ void *KeyAgent(void *arg) {
         }
     }
 
+    memcpy(dados->Z_S,Z,K_T*K_T*sizeof(unsigned char));
     // Obtenção do tempo
     struct timeval tv;
     gettimeofday(&tv, NULL);
@@ -281,8 +289,8 @@ void *KeyAgent(void *arg) {
     printf("Tempo:%d\n", Time_Initilized_sec);
     // -----------------
     while (1) {
-        gettimeofday(&tv, NULL);
-        if (tv.tv_sec - Time_Initilized_sec > 6) {
+        pthread_mutex_lock(&mutex);
+        pthread_cond_wait(&cond1, &mutex);
             // Process and update Z matrix
             // Rotate each row a random number
             for (int contador_row = 0; contador_row < K_T; contador_row++) {
@@ -306,8 +314,9 @@ void *KeyAgent(void *arg) {
                     Z[contador_row][contador_column] = temp_row[contador_row];
                 }
             }
+            memcpy(dados->Z_S,Z,K_T*K_T*sizeof(unsigned char));
             Time_Initilized_sec = tv.tv_sec;
-        }
+            pthread_mutex_unlock(&mutex);
     }
 }
 
@@ -405,13 +414,31 @@ int main(int argc, char *argv[]) {
     dados_KeyAgent args_keyagent;
     args_keyagent.K_T = K_T;
     args_keyagent.T = T;
+    args_keyagent.Z_S = malloc(K_T*K_T*sizeof(unsigned char));
+
+    unsigned char *temp_z = &args_keyagent.Z_S;
 
     char buffer_numpedidos[11];
     buffer_numpedidos[11] = '\0';
 
     pthread_create(&KeyAgent_ID, NULL, KeyAgent, &args_keyagent);
     pthread_create(&CommManager_ID, NULL, CommAgent, &args_commagent);
-    pthread_join(KeyAgent_ID, NULL);
+    //pthread_join(KeyAgent_ID, NULL);
+
+    gettimeofday(&tv, NULL);
+    time_t signal_time_assistant = tv.tv_sec;
+    int imprimir = 0;
+
+    while(1){
+        if (tv.tv_sec - signal_time_assistant > 10){
+            pthread_cond_signal(&cond1);
+            signal_time_assistant = tv.tv_sec;
+        }
+        gettimeofday(&tv, NULL);
+        imprimir = 1;
+        //sleep(1);
+    }
+
 
     return 0;
 }
