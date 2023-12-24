@@ -11,20 +11,30 @@
 #include <sys/time.h>
 #include <sys/types.h>
 #include <time.h>
+#include <signal.h>
 #include <unistd.h>
 #include "Dependencies/hashmap.c/hashmap.h"
 
-#define TIMEOUT_BIND 5
+#define TIMEOUT_BIND 40
 #define K 10  // Têm de ser retirado do ficheiro de config depois
 // #define Min 0 //Minimo para as funções random, têm de ser retirado do ficheiro em versões posteriores
 // #define Max 255 //Máximo para as funções random, o nosso objetivo é obter valores ASCII válidos, dai 255 como máximo, mesma situação do Min
 // Têmos de criar uma struct para a MIB
 
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+//pthread_mutex_t mutex1_1 = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex2 = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex3 = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cond1 = PTHREAD_COND_INITIALIZER;
+//pthread_cond_t cond1_1 = PTHREAD_COND_INITIALIZER;
 pthread_cond_t cond2 = PTHREAD_COND_INITIALIZER;
 pthread_cond_t cond3 = PTHREAD_COND_INITIALIZER;
 
+//int socket_initialized = 0;
+
+//Precisamos de usar mutex e condições para evitar que os processos bloquem o programa em certos momentos, um momento critíco em que se deve evitar bloquear o programa é na abertura da socket
+
+sigset_t signal_set;
 
 typedef int IntegerOid;  // Para existir a aproximação máxima à escrita de uma MIB definimos estas variáveis.
 typedef char *OctetStringOid;
@@ -147,7 +157,7 @@ void *CommAgent(void *arg) {
     read(fd_rqfile, buffer_numpedidos, sizeof(buffer_numpedidos));  // Podiamos optar por uma solução mais bonita a partir do fstat
 
     int num_pedidos = atoi(buffer_numpedidos);
-    printf("Ip: %s,", dados->IP_add);
+    printf("Address: %s:%d\n", dados->IP_add,dados->port);
     printf("%lc\n", sizeof(dados->IP_add));
     server.sin_family = AF_INET;
     server.sin_addr.s_addr = inet_addr(dados->IP_add);
@@ -160,13 +170,21 @@ void *CommAgent(void *arg) {
 
     // Basicamente dizer que a socket passa a ter estas propriedades
 
-    // Bind com timeout usando o select para esperar pelo resultado da operação
-    if (bind(Udp_Server_Socket_fd, (struct sockaddr *)&server, sizeof(server)) < 0) {
-        FD_ZERO(&read_fds);
-        FD_SET(Udp_Server_Socket_fd, &read_fds);
+    //Definição dos tempos de timeout (é tido em conta qualquer ação, ou seja, se a socket estiver mais de 1 minuto sem realizar qualquer ação, o servidor é fechado)
+    FD_ZERO(&read_fds);
+    FD_SET(Udp_Server_Socket_fd, &read_fds);
 
-        timeout.tv_sec = TIMEOUT_BIND;
-        timeout.tv_usec = 0;
+    timeout.tv_sec = TIMEOUT_BIND;
+    timeout.tv_usec = 0;
+
+    // Bind com timeout usando o select para esperar pelo resultado da operação
+
+    while (bind(Udp_Server_Socket_fd, (struct sockaddr *)&server, sizeof(server)) < 0) {
+        
+    }
+
+   while(1){
+        //pthread_mutex_lock(&mutex);
         int select_result = select(Udp_Server_Socket_fd + 1, &read_fds, NULL, NULL, &timeout);
         if (select_result == 0) {
             fprintf(stderr, "Error: Binding timed out.\n");
@@ -175,6 +193,7 @@ void *CommAgent(void *arg) {
         } else {
             printf(stderr, "Error: Adress already in use.\n");
         }
+        //pthread_mutex_unlock(&mutex);
     }
 
     // Verificamos se a socket ficou atribuída
@@ -196,10 +215,10 @@ void *KeyAgent(void *arg) {
 
     // Geração das matrizes e inicialização do keyagent
     unsigned char Za[K_T][K_T];
-    unsigned char Zb[K_T][K_T];
+    unsigned char Zb[K_T][K_T]; 
     unsigned char Zc[K_T][K_T];
     unsigned char Zd[K_T][K_T];
-    unsigned char Z[K_T][K_T];
+    unsigned char Z[K_T][K_T];    
 
     for (int contador_row = 0; contador_row != K_T; contador_row++) {
         for (int contador_collumn = 0; contador_collumn != K_T; contador_collumn++) {
@@ -281,6 +300,7 @@ void *KeyAgent(void *arg) {
     }
 
     memcpy(dados->Z_S,Z,K_T*K_T*sizeof(unsigned char));
+
     // Obtenção do tempo
     struct timeval tv;
     gettimeofday(&tv, NULL);
@@ -350,6 +370,11 @@ int main(int argc, char *argv[]) {
     int T = 0;              // Intervalo de tempo entre atualizações
     int Start_up_time = 0;  // Tempo desde o início do programa
 
+    //Variáveis de verificação de inicialização
+    int signumber;
+    int commport_ready = 0;
+    //-----------------------------------------
+
     if (argc < 2) {  // Abertura de ficheiro default
         config_fd = open("config_SNMPKeys.txt", O_RDONLY);
     } else {  // Abertura de um ficheiro custom, se quisermos usar isto têmos de defenir um plano que deve ser seguido para que a leitura do ficheiro seja sempre respeitada
@@ -389,7 +414,7 @@ int main(int argc, char *argv[]) {
                     T = atoi(token);
                     break;
                 default:
-                    break;
+                    break;pthread_create(&CommManager_ID, NULL, CommAgent, &args_commagent);
             }
             token = strtok(NULL, ",");
             contador++;
@@ -421,24 +446,29 @@ int main(int argc, char *argv[]) {
     char buffer_numpedidos[11];
     buffer_numpedidos[11] = '\0';
 
-    pthread_create(&KeyAgent_ID, NULL, KeyAgent, &args_keyagent);
     pthread_create(&CommManager_ID, NULL, CommAgent, &args_commagent);
+    pthread_create(&KeyAgent_ID, NULL, KeyAgent, &args_keyagent);
+    
     //pthread_join(KeyAgent_ID, NULL);
 
     gettimeofday(&tv, NULL);
     time_t signal_time_assistant = tv.tv_sec;
-    int imprimir = 0;
+    time_t print_ZTable = tv.tv_sec;
+
+    //sigwait(&signal_set, &signumber); //Vamos fazer com que o programa espere que a porta fique 100% operacional antes de avançar
 
     while(1){
         if (tv.tv_sec - signal_time_assistant > 10){
             pthread_cond_signal(&cond1);
             signal_time_assistant = tv.tv_sec;
         }
+        if ((tv.tv_sec - print_ZTable) > 6){
+            printf("Current ZTable => %s\n",args_keyagent.Z_S);
+            print_ZTable = tv.tv_sec;
+        }
         gettimeofday(&tv, NULL);
-        imprimir = 1;
-        //sleep(1);
+        sleep(1);
     }
-
 
     return 0;
 }
