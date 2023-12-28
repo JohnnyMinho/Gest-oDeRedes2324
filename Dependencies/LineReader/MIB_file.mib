@@ -1,0 +1,156 @@
+-- groups in snmpKeysMib
+-- the OID of snmpKeysMib is irrelevant (it can be implemented as NULL)
+
+system OBJECT IDENTIFIER ::= { snmpKeysMib 1 }
+config OBJECT IDENTIFIER ::= { snmpKeysMib 2 }
+keys OBJECT IDENTIFIER ::= { snmpKeysMib 3 }
+-- the system group
+
+systemRestartDate OBJECT-TYPE
+SYNTAX INTEGER
+MAX-ACCESS read-only
+STATUS current
+DESCRIPTION “The date (YY*104+MM*102+DD) when the agent has started
+a new Z matrix.”
+::= { system 1 }
+
+systemRestartTime OBJECT-TYPE
+SYNTAX INTEGER
+MAX-ACCESS read-only
+STATUS current
+DESCRIPTION “The time (HH*104+MM*102+SS) when the agent has started
+a new Z matrix.”
+::= { system 2 }
+
+systemKeySize OBJECT-TYPE
+SYNTAX INTEGER
+MAX-ACCESS read-write
+STATUS current
+DESCRIPTION “The number of bytes (K) of each generated key.”
+::= { system 3 }
+
+systemIntervalUpdate OBJECT-TYPE
+SYNTAX INTEGER
+MAX-ACCESS read-write
+STATUS current
+DESCRIPTION “The number of milliseconds of the updating interval of the
+internal Z matrix.”
+::= { system 4 }
+
+systemMaxNumberOfKeys OBJECT-TYPE
+SYNTAX INTEGER
+MAX-ACCESS read-write
+STATUS current
+DESCRIPTION “The maximum number of generated keys that are still valid.”
+::= { system 5 }
+
+systemKeysTimeToLive OBJECT-TYPE
+SYNTAX INTEGER
+MAX-ACCESS read-write
+STATUS current
+DESCRIPTION “The number of seconds of the TTL of the generated keys.”
+::= { system 6 }
+
+-- the config group
+-- the Z matrix and the fm(a,b) matrix function don’t need
+-- to be defined in the MIB as they’re only needed for internal computations
+
+configMasterKey OBJECT-TYPE
+SYNTAX OCTET STRING
+MAX-ACCESS read-write
+STATUS current
+DESCRIPTION “The master double key M with at least K*2 bytes in size.”
+::= { config 1 }
+
+configFirstCharOfKeysAlphabet OBJECT-TYPE
+SYNTAX INTEGER
+MAX-ACCESS read-write
+STATUS current
+DESCRIPTION “The ASCII code of the first character of the alphabet
+used in the keys (default=33).”
+::= { config 2 }
+
+configCardinalityOfKeysAlphabet OBJECT-TYPE
+SYNTAX INTEGER
+MAX-ACCESS read-write
+STATUS current
+DESCRIPTION “The number of characters (Y) in the alphabet
+used in the keys (default=94).”
+::= { config 3 }
+
+-- the data group
+-- includes the table with the information from all
+-- created keys that are still valid
+dataNumberOfValidKeys OBJECT-TYPE
+SYNTAX INTEGER
+MAX-ACCESS read-only
+STATUS current
+DESCRIPTION “The number of elements in the dataTableGeneratedKeys.”
+::= { data 1 }
+
+dataTableGeneratedKeys OBJECT-TYPE
+SYNTAX SEQUENCE OF DataTableGeneratedKeysEntryType
+ACCESS not-accessible
+STATUS mandatory
+DESCRIPTION "A table with information from all created keys that are still valid."
+::= { data 2 }
+
+dataTableGeneratedKeysEntry OBJECT-TYPE
+SYNTAX DataTableGeneratedKeysEntryType
+MAX-ACCESS not-accessible
+STATUS current
+DESCRIPTION “A row of the table with information for each key.”
+INDEX { keyId } ::= { dataTableGeneratedKeys 1 }
+DataTableGeneratedKeysEntryType ::=
+SEQUENCE { keyId keyValue KeyRequester keyExpirationDate keyExpirationTime
+keyVisibility}
+
+keyId OBJECT-TYPE
+SYNTAX INTEGER
+MAX-ACCESS read-only
+STATUS current
+DESCRIPTION “The identification of a generated key.”
+::= { dataTableGeneratedKeysEntry 1 }
+
+keyValue OBJECT-TYPE
+SYNTAX OCTET STRING
+MAX-ACCESS read-only
+STATUS current
+DESCRIPTION “The value of a generated key (K bytes/characters long).”
+::= { dataTableGeneratedKeysEntry 2 }
+
+KeyRequester OBJECT-TYPE
+SYNTAX OCTET STRING
+MAX-ACCESS read-only
+STATUS current
+DESCRIPTION “The identification of the manager/client that initially
+requested the key.”
+::= { dataTableGeneratedKeysEntry 3 }
+
+keyExpirationDate OBJECT-TYPE
+SYNTAX INTEGER
+MAX-ACCESS read-only
+STATUS current
+DESCRIPTION “The date (YY*104+MM*102+DD) when the key will expire.”
+::= { dataTableGeneratedKeysEntry 4 }
+
+keyExpirationTime OBJECT-TYPE
+SYNTAX INTEGER
+MAX-ACCESS read-only
+STATUS current
+DESCRIPTION “The time (HH*104+MM*102+SS) when the key will expire.”
+::= { dataTableGeneratedKeysEntry 5 }
+
+keyVisibility OBJECT-TYPE
+SYNTAX INTEGER
+MAX-ACCESS read-write
+STATUS current
+DESCRIPTION “0 – Key value is not visible; 1 – key value is only visible
+to the requester; 2 – key value is visible to anyone.”
+::= { dataTableGeneratedKeysEntry 6 }
+-- when a manager/client wants to request a generation of a key it
+-- sends a set() request to write 0,1 or 2 into the keyVisibility.0 instance;
+-- the agent will create a new key (Id=KI) and will answer with the value
+-- of the new keyVisibility.KI instance;
+-- the manager/agent will then retrieve any required information from the agent,
+-- including the keyValue.KI value, using get() requests.
