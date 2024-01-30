@@ -18,9 +18,8 @@ int random_request_num_gen(){
 
 void print_menu(){
   printf("Gestor V.1\n");
-  printf("1-> Response\n");
-  printf("2-> Get\n");
-  printf("3-> Set\n");
+  printf("1-> Get\n");
+  printf("2-> Set\n");
   printf("0-> Exit\n");
 }
 
@@ -31,7 +30,11 @@ int main(void) {
   char buffer[1024];
   int bytes_sent, bytes_received;
   int menu_option = -1;
-
+  int chosen_op = "4";
+  int num_pedidos = 0;
+  int num_erros = 0;
+  int ID_pedido = 0;
+  char *mensagem;
   //PDU -> 0,0,0,Número até 9 dígitos,0||1||2, Número de pedidos,Lista estilo (N do pedido, dados ; N do pedido, dados), Número de erros (Igual ao de pedidos) , Lista de Erros (N do erro, dados)***
 
   if (sockfd < 0) {
@@ -46,7 +49,43 @@ int main(void) {
 
   print_menu();
   while(menu_option == -1){
-    scanf("Escolha uma das opções")
+    scanf("Escolha uma das opções %d",menu_option);
+    switch(menu_option){
+      case(1):
+        chosen_op = 0;
+        int occupied_buffer_space = 0;
+        printf("Ao digitar a que componenetes pretende aceder, digite sempre um "","" entre cada");
+        scanf("Quantos pedidos quer realizar: %d",num_pedidos);
+        char buffer[300];
+        
+        for(int n = 0; n < num_pedidos; n++){
+          char input[100];
+          if (fgets(input, sizeof(input), stdin) != NULL){
+            // Remove the newline character if present
+            size_t length = strlen(input);
+            if (length > 0 && input[length - 1] == '\n') {
+                input[length - 1] = '\0';
+            }
+            strcat(buffer,input);
+          }
+        }
+        size_t total_buffer_length = strlen(buffer)
+        break;
+      case(2):
+        chosen_op = 1;
+        scanf("Quantos pedidos quer realizar: %d",num_pedidos);
+        for(int n = 0; n < num_pedidos; n++){
+          
+        }
+        break;
+      case(0):
+        printf("Closing the agent");
+        _exit(0);
+        break;
+      default:
+        printf("Nenhuma opção válida escolhida");
+        break;
+    }
   }
 
   if (connect(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
