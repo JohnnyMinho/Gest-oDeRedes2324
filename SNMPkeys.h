@@ -41,3 +41,7 @@ typedef struct {
     char *IP_add;
     int port;
 } dados_CommAgent;
+
+typedef struct {
+  int temp;
+} dados_ProtocolAgent;

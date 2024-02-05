@@ -136,6 +136,10 @@ struct Hashmap *MibSetter(int fd){
 // No server usamos a solução sugerida pelo professor que é o uso de um ficheiro com o número de pedidos total
 
 void *ProtocolAgent(void *arg){
+    //Só precisamos de um arguemnto a ser recebido, que é o buffer associado ao pedido, estes depois faz tudo desde tratamento dos dados a
+    //processamento.
+    //1 thread por pedido. Enviamos o resultado para a CommAgent ou fazemos aqui o envio por uma questão de simplicidade/efc?
+    
     
 }
 
@@ -184,18 +188,14 @@ void *CommAgent(void *arg) {
     timeout.tv_sec = TIMEOUT_BIND;
     timeout.tv_usec = 0;
 
-    // Bind com timeout usando o select para esperar pelo resultado da operação
-
-    /*if (bind(Udp_Server_Socket_fd, (struct sockaddr *)&server, sizeof(server)) < 0) {
-        perror("-1");
-    }*/
+    // Bind das info da socket a ela 
 
     while (bind(Udp_Server_Socket_fd, (struct sockaddr *)&server, sizeof(server)) < 0) {
         if (errno == EADDRNOTAVAIL) {
-            fprintf(stderr, "Error: Cannot assign requested address. Check IP address availability.\n");
+            fprintf(stderr, "Error: Ip pode não estar disponível \n");
             exit(-1);
         } else if (errno == EADDRINUSE) {
-            fprintf(stderr, "Error: Address already in use. Waiting and retrying...\n");
+            fprintf(stderr, "Error: Ip já usado...\n");
             sleep(1);  // Add a delay before retrying
         } else {
             perror("Error binding");
@@ -217,6 +217,8 @@ void *CommAgent(void *arg) {
         int select_result = select(Udp_Server_Socket_fd + 1, &read_fds, NULL, NULL, &timeout);
         char buffer[1024];
         ssize_t num_bytes_waiting = read(Udp_Server_Socket_fd,buffer,sizeof(buffer)-1);
+        size_t information_length = strlen(num_bytes_waiting);
+        
         if (select_result == 0) {
             fprintf(stderr, "Error: Timed out.\n");
         } else if (select_result < 0) {
