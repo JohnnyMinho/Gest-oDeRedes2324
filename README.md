@@ -1,8 +1,6 @@
-To-Do:
+This project is concluded.
 
-Verificação do KeyGen quanto a este trabalhar com a formulação de chaves para cada pedido;
-Fazer as funções do CommAgent;
-Fazer o script do agent que se vai ligar ao servidor;
-Definir o PDU;
-Definir e implementar a MIB com hashmaps.
-Se for preciso mais alguma coisa é indicar
+Extras: 
+-  Credit system;
+-  Multimedia Source shutdown detection system;
+-  Automatic unsubscription of all the subscribers of a dead source;
